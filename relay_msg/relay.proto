@@ -1,0 +1,18 @@
+package relay.msg;
+
+enum CMD_TYPE {
+    CMD_DATA = 1;    //数据中转
+    CMD_PAD = 2;     //假数据, 通道填充, 做混淆
+}
+
+message RelayMsg {
+    optional bytes rnd = 1;           //随机数据填充
+    optional bytes body = 2;          //包装RelayBody
+    optional uint32 crc32 = 3;        //RelayBody的校验
+}
+
+message RelayBody {
+    optional int32 cmd = 1;          //参考CMD_TYPE
+    optional bytes data = 2;         //透传数据
+
+}
