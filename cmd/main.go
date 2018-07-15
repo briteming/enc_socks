@@ -2,10 +2,10 @@ package main
 
 import (
     "flag"
-    "enc_socks/server"
+    "github.com/xxxsen/enc_socks/server"
     "github.com/sirupsen/logrus"
     "time"
-    "enc_socks/codec"
+    "github.com/xxxsen/enc_socks/codec"
     "os"
 )
 

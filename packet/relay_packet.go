@@ -2,13 +2,13 @@ package packet
 
 
 import (
-    "enc_socks/relay_msg"
+    "github.com/xxxsen/enc_socks/relay_msg"
     "errors"
     "hash/crc32"
     "github.com/golang/protobuf/proto"
     "encoding/binary"
-    "enc_socks/utils"
-    "enc_socks/codec"
+    "github.com/xxxsen/enc_socks/utils"
+    "github.com/xxxsen/enc_socks/codec"
     "fmt"
 )
 

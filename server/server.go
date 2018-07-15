@@ -1,14 +1,14 @@
 package server
 
 import (
-    "enc_socks/codec"
+    "github.com/xxxsen/enc_socks/codec"
     "net"
     "time"
     "context"
     "sync"
     "io"
-    "enc_socks/packet"
-    "enc_socks/relay_msg"
+    "github.com/xxxsen/enc_socks/packet"
+    "github.com/xxxsen/enc_socks/relay_msg"
     log "github.com/sirupsen/logrus"
 )
 
