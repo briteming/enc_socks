@@ -38,8 +38,8 @@ enc_socks                                     |
 
 ## 参数
 * --type, server类型, 可选**local**, **remote**, 分别启动为本地端和远程端。
-* --codec, 编码器, 目前只有一个简单的xor, 哈哈
-* --key, 加密的key, 与codec联合使用
+* --svr_pem, 服务端加载的pem文件(可以使用cmd目录下的create_tls_data.sh生成)
+* --svr_key, 服务端加载的key文件(可以使用cmd目录下的create_tls_data.sh生成)
 * --timeout, 链接/读写数据超时的时间, 单位为秒
 * --local, 本地监听地址, 例如:"0.0.0.0:8848"
 * --remote, 远程server地址, 例如"127.0.0.1:8849"
