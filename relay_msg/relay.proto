@@ -1,18 +1,21 @@
+syntax = "proto2";
+
 package relay.msg;
 
 enum CMD_TYPE {
     CMD_DATA = 1;    //数据中转
     CMD_PAD = 2;     //假数据, 通道填充, 做混淆
+    CMD_AUTH = 3;    //鉴权
 }
 
-message RelayMsg {
-    optional bytes rnd = 1;           //随机数据填充
-    optional bytes body = 2;          //包装RelayBody
-    optional uint32 crc32 = 3;        //RelayBody的校验
+message RelayPacket {
+    optional bytes rnd_pad_front = 1;   //随机数据填充
+    optional bytes data = 2;            //透传数据
+    optional int32 cmd = 3;             //参考CMD_TYPE
+    optional bytes rnd_pad_end = 10;    //随机数据填充
 }
 
-message RelayBody {
-    optional int32 cmd = 1;          //参考CMD_TYPE
-    optional bytes data = 2;         //透传数据
-
+message RelayAuthReq {
+    optional string user = 1;        //用户名
+    optional string pwd = 2;         //密码
 }

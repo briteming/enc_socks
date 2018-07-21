@@ -2,44 +2,36 @@ package main
 
 import (
     "flag"
-    "github.com/xxxsen/enc_socks/server"
     "github.com/sirupsen/logrus"
     "time"
-    "github.com/xxxsen/enc_socks/codec"
-    "os"
+    "enc_socks"
 )
 
 var flagLocal = flag.String("local", "127.0.0.1:8848", "local bind addr")
 var flagRemote = flag.String("remote", "127.0.0.1:8849", "remote server addr")
 var flagTimeout = flag.Int("timeout", 3, "connect/read timeout")
-var flagKey = flag.String("key", "hello_test", "encrypt key")
-var flagCodec = flag.String("codec", "xor", "codec")
 var flagType = flag.String("type", "local", "server_type:local or remote")
+var flagSvrPem = flag.String("svr_pem", "./server.pem", "pem file path")
+var flagSvrKey = flag.String("svr_key", "./server.key", "key file path")
 
-func buildConfig(config *server.ServerConfig) {
+func buildConfig(config *enc_socks.ServerConfig) {
     config.LocalAddr = *flagLocal
     config.RemoteAddr = *flagRemote
-    config.Codec = *flagCodec
-    config.Key = *flagKey
     config.Timeout = time.Duration(*flagTimeout) * time.Second
+    if *flagType == "local" {
+        config.ServerType = enc_socks.SERVER_TYPE_LOCAL
+    } else if *flagType == "remote" {
+        config.ServerType = enc_socks.SERVER_TYPE_REMOTE
+    }
+    config.TlsServerPemAddr = *flagSvrPem
+    config.TlsServerKeyAddr = *flagSvrKey
 }
 
 func main() {
     flag.Parse()
-    config := &server.ServerConfig{}
+    config := &enc_socks.ServerConfig{}
     buildConfig(config)
     logrus.Infof("Parse config:%s", config.String())
-    comm := codec.NewFactory()
-    _, err := comm.GetFactory(config.Codec)
-    if err != nil {
-        logrus.Errorf("Get codec factory failed, err:%s, codec name:%s, codec list:%v", err.Error(), config.Codec, comm.AllKey())
-        os.Exit(1);
-    }
-    if *flagType == "local" {
-        svr := server.NewRelayLocal(config)
-        svr.Start()
-    } else {
-        svr := server.NewRelayServer(config)
-        svr.Start()
-    }
+    svr := enc_socks.NewRelayServer(config)
+    svr.Start()
 }

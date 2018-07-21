@@ -1,4 +1,4 @@
-package server
+package enc_socks
 
 import (
     "testing"
@@ -44,7 +44,7 @@ func Once(t *testing.T, i int) {
 }
 
 func TestEchoClient(t *testing.T) {
-    for i := 0; i < 1000; i++ {
+    for i := 0; i < 1; i++ {
         Once(t, i)
     }
 }
