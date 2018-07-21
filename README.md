@@ -48,9 +48,9 @@ enc_socks                                     |
 
 ### 本地端
 ```shell
-./cmd --type=local --local="0.0.0.0:8848" --remote="${你服务器的地址}" --codec=xor --key="hello_test_xxc" --timeout=3 
+./cmd --type=local --local="0.0.0.0:8848" --remote="${你服务器的地址}" --user="xxx' --pwd="hello_world" --timeout=3 
 ```
 ### 远程端
 ```shell
-./cmd --type=remote --local="0.0.0.0:8849" --remote="${你的代理服务器的地址}" --codec=xor --key="hello_test_xxc" --timeout=3
+./cmd --type=remote --local="0.0.0.0:8849" --remote="${你的代理服务器的地址}" --svr_pem="./server.pem" --svr_key="./server.key" --timeout=3 --user="xxx" --pwd="hello_world"
 ```
