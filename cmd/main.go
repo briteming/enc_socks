@@ -5,6 +5,7 @@ import (
     "github.com/sirupsen/logrus"
     "time"
     "enc_socks"
+    "enc_socks/relay"
 )
 
 var flagLocal = flag.String("local", "127.0.0.1:8848", "local bind addr")
@@ -13,6 +14,8 @@ var flagTimeout = flag.Int("timeout", 3, "connect/read timeout")
 var flagType = flag.String("type", "local", "server_type:local or remote")
 var flagSvrPem = flag.String("svr_pem", "./server.pem", "pem file path")
 var flagSvrKey = flag.String("svr_key", "./server.key", "key file path")
+var flagUser = flag.String("user", "hellosen", "user name")
+var flagPwd = flag.String("pwd", "xxxxxxxx", "user pwd")
 
 func buildConfig(config *enc_socks.ServerConfig) {
     config.LocalAddr = *flagLocal
@@ -25,6 +28,11 @@ func buildConfig(config *enc_socks.ServerConfig) {
     }
     config.TlsServerPemAddr = *flagSvrPem
     config.TlsServerKeyAddr = *flagSvrKey
+    auth := relay.NewAuthMsg(*flagUser, *flagPwd)
+    config.User = *auth
+    authMap := relay.NewAuthMap()
+    authMap.Add(auth)
+    config.UserInfo = *authMap
 }
 
 func main() {
