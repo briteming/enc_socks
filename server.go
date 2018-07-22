@@ -10,14 +10,16 @@ import (
     "time"
     "crypto/tls"
     "reflect"
+    "enc_socks/bytepool"
 )
 
 type RelayServer struct {
     config *ServerConfig
+    bytePool *bytepool.BytePool
 }
 
 func NewRelayServer(cfg *ServerConfig) *RelayServer {
-    return &RelayServer{config:cfg}
+    return &RelayServer{config:cfg, bytePool:bytepool.NewPool(relay.PER_PACKET_DATA_SIZE)}
 }
 
 func(this *RelayServer) loadServer() (net.Listener, error) {
@@ -86,8 +88,11 @@ func isDone(ctx context.Context) bool {
     }
 }
 
-func datacopy(lhs net.Conn, rhs net.Conn) (int, error) {
-    buf := make([]byte, relay.PER_PACKET_DATA_SIZE * 2)
+func(this *RelayServer) datacopy(lhs net.Conn, rhs net.Conn) (int, error) {
+    buf := this.bytePool.Get()
+    defer func() {
+        this.bytePool.Put(buf)
+    } ()
     cnt, err := lhs.Read(buf)
     if cnt > 0 {
         data := buf[0:cnt]
@@ -108,10 +113,16 @@ func(this *RelayServer) handleConnection(local net.Conn, sessionId uint32) {
     remote, err := this.loadTarget()
     defer func() {
         if local != nil && !reflect.ValueOf(local).IsNil() {
-            local.Close()
+            err := local.Close()
+            if err != nil {
+                log.Errorf("Close local connection failed, err:%s, session:%d", err.Error(), sessionId)
+            }
         }
         if remote != nil && !reflect.ValueOf(remote).IsNil() {
-            remote.Close()
+            err := remote.Close()
+            if err != nil {
+                log.Errorf("Close remote connection failed, err:%s, session:%d", err.Error(), sessionId)
+            }
         }
     }()
     if err != nil {
@@ -130,7 +141,7 @@ func(this *RelayServer) handleConnection(local net.Conn, sessionId uint32) {
         }()
         for ; ; {
             remote.SetReadDeadline(time.Now().Add(this.config.Timeout))
-            _, err := datacopy(remote, local)
+            _, err := this.datacopy(remote, local)
             if err != nil {
                 if err == io.EOF {
                     log.Infof("Local read eof, sessionid:%d", sessionId)
@@ -152,7 +163,7 @@ func(this *RelayServer) handleConnection(local net.Conn, sessionId uint32) {
             cancel()
         }()
         for ; ; {
-            _, err := datacopy(local, remote)
+            _, err := this.datacopy(local, remote)
             if err != nil {
                 if err == io.EOF {
                     log.Infof("Remote read eof, sessionid:%d", sessionId)

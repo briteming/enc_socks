@@ -6,6 +6,7 @@ import (
     "errors"
     "fmt"
     "enc_socks/relay_msg"
+    "enc_socks/bytepool"
 )
 
 type RelayConn struct {
@@ -17,8 +18,10 @@ type RelayConn struct {
     dbuf []byte
 }
 
+var bytePool = bytepool.NewPool(PER_PACKET_DATA_SIZE)
+
 func NewRelayConn(conn net.Conn) *RelayConn {
-    return &RelayConn{conn:conn, rbuf:make([]byte, PER_PACKET_DATA_SIZE * 2), wbuf:make([]byte, PER_PACKET_DATA_SIZE), dbuf:nil, rIndex:0, wIndex:0}
+    return &RelayConn{conn:conn, rbuf:bytePool.Get(), wbuf:bytePool.Get(), dbuf:nil, rIndex:0, wIndex:0}
 }
 
 func(this *RelayConn) Read(data []byte) (int, error) {
@@ -94,7 +97,18 @@ func(this *RelayConn) Write(data []byte) (int, error) {
 }
 
 func(this *RelayConn) Close() error {
-    return this.conn.Close()
+    defer func() {
+        bytePool.Put(this.rbuf)
+        bytePool.Put(this.wbuf)
+    } ()
+    err := this.conn.Close()
+    if err != nil {
+        return err
+    }
+    if this.rIndex != 0 || this.wIndex != 0 || len(this.dbuf) != 0 {
+        return errors.New(fmt.Sprintf("buffer spare in connection, rs:%d, ws, ds:%d", this.rIndex, this.wIndex, len(this.dbuf)))
+    }
+    return nil
 }
 
 func(this *RelayConn) LocalAddr() net.Addr {

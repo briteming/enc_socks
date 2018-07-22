@@ -48,8 +48,8 @@ func(this *RelayPacket) GetBodyData() []byte {
 func(this *RelayPacket) Encode() error {
     dLen := len(this.pkt.Data)
     rndLen := 10
-    if dLen < 256 {
-        rndLen = 256
+    if dLen < 128 {
+        rndLen = 128
     }
     rndLen = this.rnd.Int() % rndLen + 5
     rndData := make([]byte, rndLen)
