@@ -1,4 +1,4 @@
-package enc_socks
+package tests
 
 import (
     "testing"
