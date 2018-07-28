@@ -25,19 +25,17 @@ func Once(t *testing.T, i int) {
     data := make([]byte, 4 + len(word))
     binary.BigEndian.PutUint32(data, uint32(totalLen))
     copy(data[4:], word)
-    {
-        totalLen := len(data)
-        writeIndex := 0
-        for ; writeIndex < totalLen; {
-            writeLen, err := conn.Write(data[writeIndex:])
-            if err != nil {
-                fmt.Errorf("Write data to svr failed, err:%s, writeLen:%d\n", err, writeLen)
-                return
-            }
-            writeIndex += writeLen
+    totalLen = len(data)
+    writeIndex := 0
+    for ; writeIndex < totalLen; {
+        writeLen, err := conn.Write(data[writeIndex:])
+        if err != nil {
+            fmt.Errorf("Write data to svr failed, err:%s, writeLen:%d\n", err, writeLen)
+            return
         }
+        writeIndex += writeLen
     }
-    fmt.Printf("Write data success, begin read, id:%d, hex:%s\n", i, hex.EncodeToString(data))
+    fmt.Printf("Write data success, len:%d, begin read, id:%d, hex:%s, data:%s\n", writeIndex, i, hex.EncodeToString(data), string(data))
     result := make([]byte, len(data))
     conn.Read(result)
     fmt.Printf("Send data :%s, hex:%s, recv data:%s\n", word, hex.EncodeToString(data), string(result[4:]))

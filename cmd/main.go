@@ -16,7 +16,7 @@ var flagLocal = flag.String("local", "127.0.0.1:8847", "local bind addr")
 var flagRemote = flag.String("remote", "127.0.0.1:8848", "remote server addr")
 var flagTimeout = flag.Int("timeout", 3, "connect/read timeout")
 var flagType = flag.String("type", "local", "server_type:local or remote")
-var flagPipeList = flag.String("pipeline", "xor", "pipeline split with '#', example:xor#auth")
+var flagPipeList = flag.String("pipeline", "xor#auth", "pipeline split with '#', example:xor#auth")
 var flagPipeArgs = flag.String("pipe_args_file", "/home/sen/GoPath/src/enc_socks/cmd/config.json", "config file")
 
 func buildConfig(config *enc_socks.ServerConfig) {

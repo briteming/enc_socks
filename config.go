@@ -4,7 +4,6 @@ import (
     "time"
     "bytes"
     "fmt"
-    "enc_socks/relay"
 )
 
 const (
