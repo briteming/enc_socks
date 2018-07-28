@@ -44,7 +44,10 @@ func Once(t *testing.T, i int) {
 }
 
 func TestEchoClient(t *testing.T) {
-    for i := 0; i < 1; i++ {
+    for i := 0; i < 10000; i++ {
         Once(t, i)
+        //if (i + 1) % 100 == 0 {
+        //    time.Sleep(2 * time.Second)
+        //}
     }
 }

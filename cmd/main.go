@@ -5,18 +5,19 @@ import (
     "github.com/sirupsen/logrus"
     "time"
     "enc_socks"
-    "enc_socks/relay"
     "os"
+    "enc_socks/pipeline"
+    "strings"
+    "io/ioutil"
+    "encoding/json"
 )
 
 var flagLocal = flag.String("local", "127.0.0.1:8847", "local bind addr")
 var flagRemote = flag.String("remote", "127.0.0.1:8848", "remote server addr")
 var flagTimeout = flag.Int("timeout", 3, "connect/read timeout")
 var flagType = flag.String("type", "local", "server_type:local or remote")
-var flagSvrPem = flag.String("svr_pem", "./server.pem", "pem file path")
-var flagSvrKey = flag.String("svr_key", "./server.key", "key file path")
-var flagUser = flag.String("user", "xxxsen", "user name")
-var flagPwd = flag.String("pwd", "hello test", "user pwd")
+var flagPipeList = flag.String("pipeline", "xor", "pipeline split with '#', example:xor#auth")
+var flagPipeArgs = flag.String("pipe_args_file", "/home/sen/GoPath/src/enc_socks/cmd/config.json", "config file")
 
 func buildConfig(config *enc_socks.ServerConfig) {
     config.LocalAddr = *flagLocal
@@ -27,13 +28,6 @@ func buildConfig(config *enc_socks.ServerConfig) {
     } else if *flagType == "remote" {
         config.ServerType = enc_socks.SERVER_TYPE_REMOTE
     }
-    config.TlsServerPemAddr = *flagSvrPem
-    config.TlsServerKeyAddr = *flagSvrKey
-    auth := relay.NewAuthMsg(*flagUser, *flagPwd)
-    config.User = *auth
-    authMap := relay.NewAuthMap()
-    authMap.Add(auth)
-    config.UserInfo = *authMap
 }
 
 func initLog() {
@@ -49,10 +43,52 @@ func initLog() {
 
 func main() {
     flag.Parse()
+    //初始化日志
     initLog()
+
+    //生成基础配置
     config := &enc_socks.ServerConfig{}
     buildConfig(config)
     logrus.Infof("Parse config:%s", config.String())
-    svr := enc_socks.NewRelayServer(config)
+
+    //加载管道配置
+    mp := make(map[string]interface{})
+    data, err := ioutil.ReadFile(*flagPipeArgs)
+    if err != nil {
+        logrus.Errorf("Load pipe args file failed, err:%s", err.Error())
+    } else {
+        err = json.Unmarshal(data, &mp)
+        if err != nil {
+            logrus.Errorf("Parse pipe file json err, msg:%s", err.Error())
+            os.Exit(2)
+        }
+    }
+
+    //初始化管道
+    holder := pipeline.GetHolder()
+    pipes := strings.Split(*flagPipeList, "#")
+    var clientPipe []pipeline.Pipeline
+    var serverPipe []pipeline.Pipeline
+    for _, pipe := range pipes {
+        fac, err := holder.GetByName(pipe)
+        if err != nil {
+            logrus.Errorf("Get pipe factory failed, err:%s", err.Error())
+            os.Exit(1)
+        }
+        cfg, ok := mp[pipe]
+        if !ok {
+            logrus.Errorf("Get pipe:%s setting failed, setting not found!", pipe)
+            os.Exit(3)
+        }
+        c := cfg.(map[string]interface{})
+        err = fac.Init(&c)
+        if err != nil {
+            logrus.Errorf("Factory:%s init with setting:%v failed, err:%s", pipe, c, err.Error())
+        }
+        clientPipe = append(clientPipe, fac.GetCliPipe())
+        serverPipe = append(serverPipe, fac.GetSvrPipe())
+    }
+
+    svr := enc_socks.NewRelayServer(config, serverPipe, clientPipe)
     svr.Start()
 }

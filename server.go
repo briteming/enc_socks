@@ -8,72 +8,69 @@ import (
     "sync"
     "io"
     "time"
-    "crypto/tls"
     "reflect"
     "enc_socks/bytepool"
+    "enc_socks/pipeline"
 )
 
 type RelayServer struct {
     config *ServerConfig
     bytePool *bytepool.BytePool
+    svrPipe []pipeline.Pipeline
+    cliPipe []pipeline.Pipeline
 }
 
-func NewRelayServer(cfg *ServerConfig) *RelayServer {
-    return &RelayServer{config:cfg, bytePool:bytepool.NewPool(relay.PER_PACKET_DATA_SIZE)}
-}
-
-func(this *RelayServer) loadServer() (net.Listener, error) {
-    if this.config.ServerType == SERVER_TYPE_REMOTE {
-        cert, err := tls.LoadX509KeyPair(this.config.TlsServerPemAddr, this.config.TlsServerKeyAddr)
-        if err != nil {
-            return nil, err
-        }
-        config := &tls.Config{Certificates: []tls.Certificate{cert}}
-        ln, err := tls.Listen("tcp", this.config.LocalAddr, config)
-        if err != nil {
-            return ln, err
-        }
-//        ln, _ := net.Listen("tcp", this.config.LocalAddr)
-        return relay.NewRelayAcceptor(ln, &this.config.UserInfo), nil
-    } else {
-        return net.Listen("tcp", this.config.LocalAddr)
-    }
+func NewRelayServer(cfg *ServerConfig, psvr []pipeline.Pipeline, pcli []pipeline.Pipeline) *RelayServer {
+    return &RelayServer{config:cfg, bytePool:bytepool.NewPool(relay.PER_PACKET_DATA_SIZE), svrPipe:psvr, cliPipe:pcli}
 }
 
 func(this *RelayServer) loadTarget() (net.Conn, error) {
+    conn, err := net.DialTimeout("tcp", this.config.RemoteAddr, this.config.Timeout)
+    if err != nil {
+        return conn, err
+    }
     if this.config.ServerType == SERVER_TYPE_REMOTE {
-        return net.DialTimeout("tcp", this.config.RemoteAddr, this.config.Timeout)
+        return conn, err
     } else {
-        conf := &tls.Config{
-            InsecureSkipVerify: true,
+        tmp := conn
+        for _, pipe := range this.cliPipe {
+            tmp, err = pipe.Process(tmp)
+            if err != nil {
+                return conn, err
+            }
         }
-        conn, err := tls.Dial("tcp", this.config.RemoteAddr, conf)
-        if err != nil {
-            return conn, err
-        }
-//        conn, _ := net.DialTimeout("tcp", this.config.RemoteAddr, this.config.Timeout)
-        return relay.DialWithConn(conn, &this.config.User, this.config.Timeout)
+        return tmp, nil
     }
 }
 
 func(this *RelayServer) Start() {
-    listener, err := this.loadServer()
+    listener, err := net.Listen("tcp", this.config.LocalAddr)
     if err != nil {
         log.Errorf("Listen addr:%s failed, err:%s", this.config.LocalAddr, err.Error())
         return
     }
-    var sessionId uint32 = 0;
-    log.Printf("Server start on addr:%s", this.config.LocalAddr)
+    sessionId := uint32(0)
     for {
-        conn, err := listener.Accept()
+        tmp, err := listener.Accept()
         if err != nil {
-            log.Errorf("Rcv conn failed, err:%s", err)
-            listener.Close()
-            return
+            log.Errorf("Recv conn failed, err:%s, wait", err.Error())
+            time.Sleep(10 * time.Millisecond)
+            continue
         }
         sessionId++
-        log.Infof("Recv connection from local, addr:%s, mark sessionid:%d", conn.RemoteAddr(), sessionId)
         go func() {
+            conn := tmp
+            if this.config.ServerType == SERVER_TYPE_REMOTE {
+                for _, pipe := range this.svrPipe {
+                    conn, err = pipe.Process(conn)
+                    if err != nil {
+                        log.Errorf("Client check failed, pipe:%s, err:%s", reflect.TypeOf(pipe).String(), err.Error())
+                        tmp.Close()
+                        return
+                    }
+                }
+            }
+            log.Infof("Recv connection from local, addr:%s, mark sessionid:%d", conn.RemoteAddr(), sessionId)
             this.handleConnection(conn, sessionId)
         }()
     }
