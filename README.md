@@ -1,3 +1,5 @@
+# repo废弃, 迁移到 https://github.com/xxxsen/wcf 
+
 # enc_socks
 一个简单的加密通道
 
